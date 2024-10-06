@@ -34,9 +34,9 @@ You need to create a configuration that includes a Redis client before using the
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
+	"fmt"
+	"log"
+    	"time"
 	"github.com/go-redis/redis/v9"
 	"github.com/ichtrojan/gotp"
 )
@@ -65,10 +65,9 @@ You can generate a token by creating a Generate payload and calling the Generate
 package main
 
 import (
-    "fmt"
-    "log"
-    "time"
-
+    	"fmt"
+    	"log"
+    	"time"
 	"github.com/go-redis/redis/v9"
 	"github.com/ichtrojan/gotp"
 )
