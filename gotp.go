@@ -2,13 +2,15 @@ package gotp
 
 import (
 	"context"
+	"crypto/subtle"
 	"errors"
-	"github.com/redis/go-redis/v9"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type Generate struct {
-	Format     format
+	Format     Format
 	Length     int
 	Identifier string
 	Expires    time.Duration
@@ -19,13 +21,10 @@ type Verify struct {
 	Identifier string
 }
 
-var ctx = context.Background()
-
 const prefix = "gotp_"
 
 func New(c Config) (Config, error) {
-	err := c.Redis.Ping(ctx).Err()
-
+	err := c.Redis.Ping(context.Background()).Err()
 	if err != nil {
 		return Config{}, err
 	}
@@ -33,7 +32,8 @@ func New(c Config) (Config, error) {
 	return c, nil
 }
 
-func (c Config) Generate(payload Generate) (token string, err error) {
+func (c Config) Generate(payload Generate) (string, error) {
+	ctx := context.Background()
 	if payload.Length < 4 || payload.Length > 10 {
 		return "", errors.New("length must be between 4 and 10")
 	}
@@ -42,20 +42,25 @@ func (c Config) Generate(payload Generate) (token string, err error) {
 		return "", errors.New("identifier is required")
 	}
 
+	var token string
+	var err error
+
 	switch payload.Format {
-	case ALPHA:
-		token = generateAlphaToken(payload.Length)
-		break
-	case ALPHA_NUMERIC:
-		token = generateAlphaNumericToken(payload.Length)
-		break
-	case NUMERIC:
-		token = generateNumericToken(payload.Length)
-		break
+	case Alpha:
+		token, err = generateAlphaToken(payload.Length)
+	case AlphaNumeric:
+		token, err = generateAlphaNumericToken(payload.Length)
+	case Numeric:
+		token, err = generateNumericToken(payload.Length)
+	default:
+		return "", errors.New("invalid format")
+	}
+
+	if err != nil {
+		return "", err
 	}
 
 	err = c.Redis.Set(ctx, prefix+payload.Identifier, token, payload.Expires).Err()
-
 	if err != nil {
 		return "", err
 	}
@@ -63,7 +68,8 @@ func (c Config) Generate(payload Generate) (token string, err error) {
 	return token, nil
 }
 
-func (c Config) Verify(payload Verify) (valid bool, err error) {
+func (c Config) Verify(payload Verify) (bool, error) {
+	ctx := context.Background()
 	storedToken, err := c.Redis.Get(ctx, prefix+payload.Identifier).Result()
 
 	if errors.Is(err, redis.Nil) {
@@ -72,9 +78,8 @@ func (c Config) Verify(payload Verify) (valid bool, err error) {
 		return false, err
 	}
 
-	if storedToken == payload.Token {
+	if subtle.ConstantTimeCompare([]byte(storedToken), []byte(payload.Token)) == 1 {
 		err = c.Redis.Del(ctx, prefix+payload.Identifier).Err()
-
 		if err != nil {
 			return false, err
 		}
