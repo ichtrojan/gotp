@@ -1,18 +1,21 @@
 package gotp
 
 import (
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"math/big"
 )
 
-func generateAlphaNumericToken(length int) string {
+func generateAlphaNumericToken(length int) (string, error) {
 	const charset = "0123456789abcdefghijklmnopqrstuvwxyz"
-	rand.Seed(time.Now().UnixNano())
 	token := make([]byte, length)
 
 	for i := range token {
-		token[i] = charset[rand.Intn(len(charset))]
+		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(charset))))
+		if err != nil {
+			return "", err
+		}
+		token[i] = charset[n.Int64()]
 	}
 
-	return string(token)
+	return string(token), nil
 }

@@ -1,17 +1,20 @@
 package gotp
 
 import (
-	"fmt"
-	"math/rand"
-	"time"
+	"crypto/rand"
+	"math/big"
 )
 
-func generateNumericToken(length int) (token string) {
-	rand.Seed(time.Now().UnixNano())
+func generateNumericToken(length int) (string, error) {
+	token := make([]byte, length)
 
-	for i := 0; i < length; i++ {
-		token += fmt.Sprintf("%d", rand.Intn(10))
+	for i := range token {
+		n, err := rand.Int(rand.Reader, big.NewInt(10))
+		if err != nil {
+			return "", err
+		}
+		token[i] = '0' + byte(n.Int64())
 	}
 
-	return token
+	return string(token), nil
 }
